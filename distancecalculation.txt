@@ -35,5 +35,5 @@ dist_calc=(2*atan2(sqrt(dist_calc),sqrt(1.0-dist_calc)));
 dist_calc*=6371000.0; //6371 is the widely accepted mean radius of the Earth 
 
 Serial.println("distance:");
-Serial.println(dist_calc);    //print the distance in meters
+Serial.println(dist_calc);    //Print the distance in meters
 }
