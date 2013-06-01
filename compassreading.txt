@@ -4,7 +4,7 @@ void compassreading()
   Wire.write(HMC6352ReadAddress);              //"Get Data" command 
   Wire.endTransmission();
 
-  delay(6); //time delays required between receipt of the command and data processing : 6ms, stated on datasheet 
+  delay(6); //time delays required between receipt of the command and data processing = 6ms, stated on datasheet 
 
   Wire.requestFrom(HMC6352SlaveAddress, 2); //get MSB (Most Significant Byte) and LSB (Least Significant Byte)
 
