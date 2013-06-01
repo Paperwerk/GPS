@@ -1,0 +1,20 @@
+void loop()   // i.e. main() which loops automatically 
+{
+  while(uart_gps.available())     // While there is data on the RX pin
+  {
+      int c = uart_gps.read();    // load the data into a variable
+      if(gps.encode(c))      // if the variable is a valid 
+      {
+        getgps(gps);         // then grab the data.
+      }
+      else  
+      { 
+        Serial.println("No New GPS data");
+      }
+  }
+  compassreading();
+  distance()
+  angle();
+  Serial.println("----");
+  delay(1000);
+}
