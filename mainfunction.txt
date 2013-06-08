@@ -3,9 +3,9 @@ void loop()   // i.e. main() which loops automatically
   while(uart_gps.available())     // While there is data on the RX pin
   {
       int c = uart_gps.read();    // load the data into a variable
-      if(gps.encode(c))      // if the variable is a valid 
+      if(gps.encode(c))      // if the variable is a valid GPS signature
       {
-        getgps(gps);         // then grab the data.
+        getgps(gps);         // then grab the data. 
       }
       else  
       { 
