@@ -5,7 +5,7 @@ void loop()   // i.e. main() which loops automatically
       int c = uart_gps.read();    // load the data into a variable
       if(gps.encode(c))      // if the variable is a valid GPS signature
       {
-        getgps(gps);         // then grab the data. 
+        getgps(gps);         // then grab the data and store the coordinates
       }
       else  
       { 
