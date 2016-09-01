@@ -1,11 +1,219 @@
-void loop()   // i.e. main() which loops automatically 
+#include <NewSoftSerial.h>
+#include <SoftwareSerial.h>
+#include <TinyGPS.h>
+#include <Wire.h>
+#include <math.h>
+
+#define RXPIN 2
+#define TXPIN 3
+#define TERMBAUD  115200
+#define GPSBAUD  4800
+
+int HMC6352SlaveAddress = 0x42;
+int HMC6352ReadAddress = 0x41; 
+float Heading;
+float CurrentCompassReading;
+float Currentlatitude;
+float Currentlongitude;
+TinyGPS gps;
+SoftwareSerial uart_gps(RXPIN, TXPIN);
+
+// THE VARIABLES
+
+
+int ArrayCounter = 0;
+int distance2next = 0;
+float latdArray[100] = {40.06487,40.06487,40.06474}; //FILL
+float longArray[100] = {-105.20988,-105.20983,-105.20983}; //FILL
+int leftMotorPin = 1;  // CHANGE
+int rightMotorPin = 2;  // CHANGE
+
+// THE VARIABLES
+
+
+void gpsdump(TinyGPS &gps);
+bool feedgps();
+
+
+void setup()
 {
-  while(uart_gps.available())     // While there is data on the RX pin
+  Serial.begin(TERMBAUD);
+  uart_gps.begin(GPSBAUD);
+  HMC6352SlaveAddress = HMC6352SlaveAddress >> 1;
+  Serial.begin(4800);
+  Wire.begin();
+  pinMode(leftMotorPin, OUTPUT);
+  pinMode(rightMotorPin, OUTPUT);
+
+
+
+  int c = uart_gps.read();    // gets one reading of the GPS in the setup phase
+  if(gps.encode(c))      
   {
-      int c = uart_gps.read();    // load the data into a variable
-      if(gps.encode(c))      // if the variable is a valid GPS signature
+   getgps(gps);         
+  }
+}
+
+void getgps(TinyGPS &gps)
+{
+float latitude, longitude;
+gps.f_get_position(&latitude, &longitude);
+
+Serial.print("Lat/Long: "); 
+Serial.print(latitude,5); 
+Serial.print(", "); 
+Serial.println(longitude,5);
+
+Currentlatitude= latitude;
+Currentlongitude= longitude;
+float flat1= Currentlatitude; 
+float flon1= Currentlongitude;
+float dist_calc=0;
+float dist_calc2=0;
+float diflat=0;
+float diflon=0;
+float x2lat=latdArray[ArrayCounter];
+float x2lon=longArray[ArrayCounter];
+//------------------------------------------ distance formula below. Calculates distance from current location to waypoint
+diflat=radians(x2lat-flat1);  //notice it must be done in radians
+flat1=radians(flat1);    //convert current latitude to radians
+x2lat=radians(x2lat);  //convert waypoint latitude to radians
+diflon=radians((x2lon)-(flon1));   //subtract and convert longitudes to radians
+dist_calc = (sin(diflat/2.0)*sin(diflat/2.0));
+dist_calc2= cos(flat1);
+dist_calc2*=cos(x2lat);
+dist_calc2*=sin(diflon/2.0);                                       
+dist_calc2*=sin(diflon/2.0);
+dist_calc +=dist_calc2;
+dist_calc=(2*atan2(sqrt(dist_calc),sqrt(1.0-dist_calc)));
+dist_calc*=6371000.0; //Converting to meters
+Serial.println("distance:");
+Serial.println(dist_calc);    //print the distance in meters
+distance2next = dist_calc; 
+}
+
+void angle()
+{
+float flat1= Currentlatitude; 
+float flon1= Currentlongitude;
+float x2lat=latdArray[ArrayCounter];
+float x2lon=longArray[ArrayCounter];
+float heading; 
+flon1 = radians(flon1);  //also must be done in radians
+x2lon = radians(x2lon);  //radians duh.
+heading = atan2(sin(x2lon-flon1)*cos(x2lat),cos(flat1)*sin(x2lat)-sin(flat1)*cos(x2lat)*cos(x2lon-flon1)),2*3.1415926535;
+heading = heading*180/3.1415926535;  // convert from radians to degrees
+heading = abs(heading);
+Serial.println("heading:");
+Serial.println(heading);   // print the heading
+Heading = heading;
+}
+
+void compassreading()
+{
+   //"Get Data. Compensate and Calculate New Heading"
+  Wire.beginTransmission(HMC6352SlaveAddress);
+  Wire.write(HMC6352ReadAddress);              // The "Get Data" command
+  Wire.endTransmission();
+
+  //time delays required by HMC6352 upon receipt of the command
+  //Get Data. Compensate and Calculate New Heading : 6ms
+  delay(6);
+
+  Wire.requestFrom(HMC6352SlaveAddress, 2); //get the two data bytes, MSB and LSB
+
+  //"The heading output data will be the value in tenths of degrees
+  //from zero to 3599 and provided in binary format over the two bytes."
+  byte MSB = Wire.read();
+  byte LSB = Wire.read();
+
+  float headingSum = (MSB << 8) + LSB; //(MSB / LSB sum)
+  float headingInt = headingSum / 10; 
+
+  Serial.println("degrees:");
+  Serial.print(headingInt);
+  CurrentCompassReading =  headingInt;  
+}
+
+void check_for_next_waypoint()
+{
+distance();
+if (distance2next < 5)
+  {
+    Serial.println("distance to next waypoint < 5 metres, assuming arrived at next waypoint");
+    ArrayCounter++;
+  }
+}
+
+void left_or_right()
+  {
+  if( (distance2next < 5) && (Heading-CurrentCompassReading) > 120 && (Heading-CurrentCompassReading) < 180 )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Right Motor to maximum strength");
+     analogWrite(rightMotorPin,255);
+   }
+   
+  if( (distance2next < 5) && ((Heading-CurrentCompassReading) > 60) && ((Heading-CurrentCompassReading) < 120) )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Right Motor to medium strength");
+     analogWrite(rightMotorPin,160);
+   }
+   
+     if( (distance2next < 5) && ((Heading-CurrentCompassReading) > 10) && ((Heading-CurrentCompassReading) < 60) )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Right Motor to low strength");
+     analogWrite(rightMotorPin,50);
+   }
+   
+     if( (distance2next < 5) && ((Heading-CurrentCompassReading) > -10) && ((Heading-CurrentCompassReading) < 10) )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Turning off motor");
+     analogWrite(leftMotorPin,0);
+     analogWrite(rightMotorPin,0);
+   }
+   {
+  if( (distance2next < 5) && (Heading-CurrentCompassReading) > -180 && (Heading-CurrentCompassReading) < -120 )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Left Motor to maximum strength");
+     analogWrite(leftMotorPin,255);
+   }
+   
+  if( (distance2next < 5) && ((Heading-CurrentCompassReading) > -120) && ((Heading-CurrentCompassReading) < -60) )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Left Motor to medium strength");
+     analogWrite(leftMotorPin,160);
+   }
+   
+     if( (distance2next < 5) && ((Heading-CurrentCompassReading) > -60) && ((Heading-CurrentCompassReading) < -10) )
+   {
+     Serial.println("Turning Angle =");
+     Serial.println(Heading-CurrentCompassReading);
+     Serial.println("Left Motor to low strength");
+     analogWrite(leftMotorPin,50);
+   }
+  }
+}
+
+void loop()
+{
+  while(uart_gps.available())     // While there is data on the RX pin...
+  {
+      int c = uart_gps.read();    // load the data into a variable...
+      if(gps.encode(c))      // if there is a new valid sentence...
       {
-        getgps(gps);         // then grab the data and store the coordinates
+        getgps(gps);         // then grab the data.
       }
       else  
       { 
@@ -13,8 +221,9 @@ void loop()   // i.e. main() which loops automatically
       }
   }
   compassreading();
-  distance()
   angle();
-  Serial.println("-----");
-  delay(1000); //artifically creates a refresh rate of exactly 1 second
+  left_or_right();
+  check_for_next_waypoint();
+  Serial.println("-----------------------------------------------------------------");
+  delay(1000);
 }
