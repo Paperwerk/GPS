@@ -5,7 +5,7 @@ This is the code I have for my university final year project.
 
 Bascially, we are attempting make a GPS enabled walking stick (with a giant handle) to aid blind/partially blind people by using vibrations to guide them in the right direction. 
 
-Pictures are available on: ****https://dl.dropboxusercontent.com/u/95421835/GPS.pdf****
+Pictures are available on: ****https://github.com/Paperwerk/GPS/blob/master/GPS.pdf****
 
 I am responsible for the GPS part. 
 
